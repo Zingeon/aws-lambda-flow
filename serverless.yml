@@ -1,0 +1,92 @@
+service: TaskGuard
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: eu-central-1
+  environment:
+    TASK_QUEUE_URL: !GetAtt TaskQueue.QueueUrl
+    DLQ_URL: !GetAtt DLQ.QueueUrl
+    TASKS_TABLE_NAME: !Ref TasksTable
+  iam:
+    role:
+      statements:
+        - Effect: "Allow"
+          Action:
+            - "sqs:SendMessage"
+            - "sqs:ReceiveMessage"
+            - "sqs:DeleteMessage"
+            - "sqs:ChangeMessageVisibility"
+            - "sqs:GetQueueAttributes"
+          Resource:
+            - { "Fn::GetAtt": ["TaskQueue", "Arn"] }
+            - { "Fn::GetAtt": ["DLQ", "Arn"] }
+        - Effect: "Allow"
+          Action:
+            - "dynamodb:PutItem"
+            - "dynamodb:UpdateItem"
+            - "dynamodb:GetItem"
+            - "dynamodb:Query"
+            - "dynamodb:Scan"
+          Resource:
+            - { "Fn::GetAtt": ["TasksTable", "Arn"] }
+        - Effect: "Allow"
+          Action:
+            - "logs:CreateLogGroup"
+            - "logs:CreateLogStream"
+            - "logs:PutLogEvents"
+          Resource: "*"
+
+functions:
+  submitTask:
+    handler: handler.submitTask
+    events:
+      - http:
+          path: task
+          method: post
+          cors: true
+
+  processTask:
+    handler: taskProcessor.processTask
+    events:
+      - sqs:
+          arn: !GetAtt TaskQueue.Arn
+          batchSize: 1
+
+  monitorDLQ:
+    handler: dlqMonitor.monitorDLQ
+    events:
+      - sqs:
+          arn: !GetAtt DLQ.Arn
+          batchSize: 1
+
+resources:
+  Resources:
+    TaskQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: TaskQueue
+        VisibilityTimeout: 30
+        MessageRetentionPeriod: 1209600  # 14 days
+        RedrivePolicy:
+          deadLetterTargetArn: 
+            Fn::GetAtt: [DLQ, Arn]
+          maxReceiveCount: 3
+
+    DLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: TaskDLQ
+
+    TasksTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: TasksTable
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: taskId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: taskId
+            KeyType: HASH

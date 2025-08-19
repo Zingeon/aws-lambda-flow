@@ -1,0 +1,26 @@
+{
+  "name": "lambda-flow",
+  "version": "1.0.0",
+  "description": "Fault-tolerant event-driven system with API Gateway, Lambda, SQS, DLQ, DynamoDB (Serverless Framework)",
+  "main": "index.js",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "deploy": "serverless deploy",
+    "remove": "serverless remove",
+    "package": "serverless package"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.864.0",
+    "@aws-sdk/client-sqs": "^3.864.0",
+    "@aws-sdk/lib-dynamodb": "^3.864.0",
+    "aws-sdk": "^2.1692.0",
+    "dotenv": "^17.2.1",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "serverless": "^3.39.0"
+  }
+}

@@ -51,7 +51,7 @@ F -->|Failure| H{Retry w/ backoff}
 
 H -->|< 3 receives| E
 
-H -->|>= 3 receives| I[SQS: DLQ]
+H -->|receives >= 3| I[SQS: DLQ]
 
 I -->|Trigger| J[Lambda: monitorDLQ]
 
